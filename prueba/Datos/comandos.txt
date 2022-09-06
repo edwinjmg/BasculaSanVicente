@@ -1,0 +1,137 @@
+
+-----------------------------------------------------------------------------------------------------------------------
+
+LOAD DATA LOCAL INFILE "D:/xampp/htdocs/bascula/Datos/clientes.csv"
+INTO TABLE clientes
+FIELDS TERMINATED BY ';'
+LINES TERMINATED BY '\n'
+IGNORE 1 LINES
+(id_cliente,nombre_cliente,nit_cliente,direccion_cliente,telefono_cliente)
+-----------------------------------------------------------------------------------------------------------------------
+
+LOAD DATA LOCAL INFILE "D:/xampp/htdocs/bascula/Datos/articulo.csv"
+INTO TABLE productos
+FIELDS TERMINATED BY ';'
+LINES TERMINATED BY '\n'
+IGNORE 1 LINES
+(id_producto,nombre_producto,precio_producto)
+
+-----------------------------------------------------------------------------------------------------------------------
+
+LOAD DATA LOCAL INFILE "D:/xampp/htdocs/bascula/Datos/compras.csv"
+INTO TABLE compras
+FIELDS TERMINATED BY ';'
+LINES TERMINATED BY '\n'
+IGNORE 1 LINES
+(id_compra,@fecha,id_cliente,id_producto,peso_bruto,saco_fibra,tara_fibra,saco_fique,tara_fique,peso_compra,precio_compra,total_compra)
+set fecha_compra=str_to_date(@fecha,'%d/%m/%Y %H:%i:%s')
+
+-----------------------------------------------------------------------------------------------------------------------
+
+TEXTO(C2;"dd/mm/yyyy")&" " & TEXTO(D2;"hh:mm:ss") convertir fecha y hora en excel
+
+UPDATE compras SET id_usuario=1,condiciones=1,estado_compra=1
+
+INSERT INTO movimiento_producto (fecha_movimiento,id_producto,id_cliente,id_compra,entrada) 
+SELECT fecha_compra,id_producto,id_cliente,id_compra,peso_compra FROM compras
+
+INSERT INTO movimiento_cliente (fecha_movimiento,id_producto,id_cliente,id_compra,valor_entrada) 
+SELECT fecha_compra,id_producto,id_cliente,id_compra,total_compra FROM compras
+
+UPDATE `movimiento_cliente` SET descripcion='COMPRA ' WHERE id_compra!=0
+
+INSERT INTO salida (fecha_salida,id_cliente,id_compra,valor_salida) 
+SELECT fecha_compra,id_cliente,id_compra,total_compra FROM compras
+
+UPDATE caja SET id_usuario=1
+UPDATE salida SET descripcion=CONCAT('COMPRA ',id_compra)
+
+INSERT INTO caja (fecha_caja,id_cliente,id_salida,descripcion_salida,valor_salida) 
+SELECT fecha_salida,id_cliente,id_salida,descripcion,valor_salida FROM salida
+
+UPDATE caja SET id_usuario=1
+
+INSERT INTO movimiento_cliente(fecha_movimiento,id_cliente,id_salida,valor_salida) 
+SELECT fecha_salida,id_cliente,id_salida,valor_salida FROM salida
+
+UPDATE movimiento_cliente INNER JOIN salida ON movimiento_cliente.id_salida=salida.id_salida 
+INNER JOIN compras ON salida.id_compra=compras.id_compra SET movimiento_cliente.id_producto=compras.id_producto,
+movimiento_cliente.descripcion=CONCAT('PAGO COMPRA ',salida.id_compra)
+
+------------------------------------------------------------------------------------------------------------------------
+
+LOAD DATA LOCAL INFILE "d:/xampp/htdocs/bascula/Datos/ventas.csv"
+INTO TABLE ventas
+FIELDS TERMINATED BY ';'
+LINES TERMINATED BY '\n'
+IGNORE 1 LINES
+(id_venta,@fecha,id_cliente,id_producto,peso_venta,sacos,precio_venta,total_venta)
+set fecha_venta=str_to_date(@fecha,'%d/%m/%Y %H:%i:%s')
+
+-----------------------------------------------------------------------------------------------------------------------
+
+UPDATE ventas SET id_usuario=1,condiciones=1,estado_venta=1
+
+INSERT INTO movimiento_producto (fecha_movimiento,id_producto,id_cliente,id_venta,salida) 
+SELECT fecha_venta,id_producto,id_cliente,id_venta,peso_venta FROM ventas
+
+INSERT INTO movimiento_cliente (fecha_movimiento,id_producto,id_cliente,id_venta,valor_salida) 
+SELECT fecha_venta,id_producto,id_cliente,id_venta,total_venta FROM ventas
+
+UPDATE `movimiento_cliente` SET descripcion='VENTA ' WHERE id_venta!=0
+
+INSERT INTO entrada (fecha_entrada,id_cliente,id_venta,valor_entrada) 
+SELECT fecha_venta,id_cliente,id_venta,total_venta FROM ventas
+
+UPDATE entrada SET descripcion=CONCAT('VENTA ',id_venta)
+
+INSERT INTO caja (fecha_caja,id_cliente,id_entrada,descripcion_entrada,valor_entrada) 
+SELECT fecha_entrada,id_cliente,id_entrada,descripcion,valor_entrada FROM entrada
+
+INSERT INTO movimiento_cliente(fecha_movimiento,id_cliente,id_entrada,valor_entrada) 
+SELECT fecha_entrada,id_cliente,id_entrada,valor_entrada FROM entrada
+
+UPDATE movimiento_cliente INNER JOIN entrada ON movimiento_cliente.id_entrada=entrada.id_entrada 
+INNER JOIN ventas ON entrada.id_venta=ventas.id_venta SET movimiento_cliente.id_producto=ventas.id_producto,
+movimiento_cliente.descripcion=CONCAT('PAGO VENTA ',entrada.id_venta)
+
+
+
+UPDATE mysql.user SET Password=PASSWORD('toor') WHERE User='root';
+FLUSH PRIVILEGES;
+
+búsqueda de archivos php.ini, y editar estas líneas:
+
+max_execution_time = 60 ; plazo máximo de ejecución de cada script, en segundos (def. 30) 
+max_input_time = 90 ; Cantidad máxima de tiempo de cada secuencia de comandos abril emplear para analizar los datos de la solicitud (def. 60) 
+memory_limit = 128M ; cantidad máxima de memoria un guión abril consumir (def. 128mb) 
+upload_max_filesize = 200M ; el tamaño máximo permitido para los archivos subidos. (Def. 2mb) 
+post_max_size = 180M ; El tamaño máximo de la POST fecha de PHP que aceptará.
+
+
+
+RESPALDO BASE DE DATOS MYSQL
+ARCHIVO "BACKUP.BAT"
+
+echo off
+d:\xampp\mysql\bin\mysqldump -u root -ptoor datos_bodega > copia_seguridad_%Date:~6,4%%Date:~3,2%%Date:~0,2%_.sql
+exit
+
+
+RESTAURAR BASE DE DATOS MYSQL
+
+EJECUTAR COMANDO
+
+mysql -u root -p < respaldo.sql
+
+
+
+
+
+
+
+
+
+
+
+
